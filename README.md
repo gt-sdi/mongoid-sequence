@@ -45,6 +45,32 @@ s2 = Sequenced.create
 s2.id #=> 2 # and so on
 ```
 
+Subclasses can share their superclass sequenced field(s) and/or have their own sequenced field(s):
+```ruby
+class Sequenced
+	include Mongoid::Document
+	include Mongoid::Sequence
+	
+	field :my_sequence, :type => Integer
+	sequence :my_sequence
+end
+
+class SubSequenced
+  use_superclass_sequence
+
+	field :my_sub_sequence, :type => Integer
+	sequence :my_sub_sequence
+end
+
+s1 = Sequenced.create
+s1.my_sequence #=> 1
+
+s2 = SubSequenced.create
+s2.my_sequence #=> 2 
+s2.my_sub_sequence #=> 1
+
+```
+
 ## Consistency
 
 Mongoid::Sequence uses the atomic [findAndModify](http://www.mongodb.org/display/DOCS/findAndModify+Command) command, so you shouldn't have to worry about the sequence's consistency.

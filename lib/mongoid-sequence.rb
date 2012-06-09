@@ -1,5 +1,6 @@
 require "mongoid-sequence/version"
 require "active_support/concern"
+require "set"
 
 module Mongoid
   module Sequence
@@ -11,23 +12,34 @@ module Mongoid
 
     module ClassMethods
       attr_accessor :sequence_fields
+      attr_accessor :klazzes
 
       def sequence(field)
+        self.klazzes ||= Set.new
+        self.klazzes << self
         self.sequence_fields ||= []
         self.sequence_fields << field
       end
+
+      def use_superclass_sequence
+        self.klazzes ||= self.superclass.klazzes = Set.new
+        self.klazzes << self.superclass
+      end
+
     end
 
     def set_sequence
       sequences = self.db.collection("__sequences")
-      self.class.sequence_fields.each do |field|
-        next_sequence = sequences.find_and_modify(:query  => {"_id" => "#{self.class.name.underscore}_#{field}"},
-                                                  :update => {"$inc" => {"seq" => 1}},
-                                                  :new    => true,
-                                                  :upsert => true)
+      self.class.klazzes.each do |klazz|
+        klazz.sequence_fields.each do |field|
+          next_sequence = sequences.find_and_modify(:query  => {"_id" => "#{klazz.name.underscore}_#{field}"},
+                                                    :update => {"$inc" => {"seq" => 1}},
+                                                    :new    => true,
+                                                    :upsert => true)
 
-        self[field] = next_sequence["seq"]
-      end if self.class.sequence_fields
+          self[field] = next_sequence["seq"]
+        end if klazz.sequence_fields
+      end
     end
   end
 end

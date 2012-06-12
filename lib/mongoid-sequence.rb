@@ -29,7 +29,7 @@ module Mongoid
     end
 
     def set_sequence
-      sequences = self.db.collection("__sequences")
+      sequences = get_sequence_collection
       self.class.klazzes.each do |klazz|
         klazz.sequence_fields.each do |field|
           next_sequence = sequences.find_and_modify(:query  => {"_id" => "#{klazz.name.underscore}_#{field}"},
@@ -39,6 +39,14 @@ module Mongoid
 
           self[field] = next_sequence["seq"]
         end if klazz.sequence_fields
+      end
+    end
+    
+    def get_sequence_collection
+      if self.embedded?
+        sequences = self._parent.db.collection("__sequences")
+      else
+        sequences = self.db.collection("__sequences")
       end
     end
   end
